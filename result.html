@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis Results | TruthSeeker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="fas fa-search"></i>
+                <h1>Fake News Detection System</h1>
+            </div>
+            <p class="tagline">Detecting The News in the digital age</p>
+        </header>
+
+        <main class="result-container">
+            <div class="result-card">
+                <h2 class="result-title">Analysis Results</h2>
+                
+                <div class="meter">
+                    <div class="meter-circle"></div>
+                    <div class="meter-info">
+                        <div class="meter-value">{{ results.confidence }}</div>
+                        <div class="meter-label">Confidence</div>
+                    </div>
+                </div>
+                
+                <div class="verdict {{ results.prediction|lower }}">
+                    {{ results.prediction }} NEWS
+                </div>
+                
+                <p>Our analysis of the provided content indicates this news is <strong>{{ results.prediction|lower }}</strong> with <strong>{{ results.confidence }}% confidence</strong>.</p>
+                
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <div class="stat-title">Credibility Score</div>
+                        <div class="stat-value">{{ results.credibility }}%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">Bias Score</div>
+                        <div class="stat-value">{{ results.bias_score }}%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">Source Trust Level</div>
+                        <div class="stat-value">{{ results.source_trust }}%</div>
+                    </div>
+                </div>
+                
+                <div class="text-sample">
+                    <h3>Analyzed Content Sample:</h3>
+                    <p>{{ results.text_sample }}</p>
+                </div>
+                
+                <button onclick="window.location.href='/'" class="back-button">
+                    <i class="fas fa-arrow-left"></i> Analyze Another
+                </button>
+            </div>
+        </main>
+
+        <footer>
+            <p>© 2025 Bijaya Raj Pant | Fake News Detection System</p>
+            <div class="theme-toggle">
+                <i class="fas fa-moon"></i>
+                <label class="switch">
+                    <input type="checkbox" id="theme-switcher">
+                    <span class="slider round"></span>
+                </label>
+                <i class="fas fa-sun"></i>
+            </div>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
