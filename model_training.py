@@ -1,65 +1,72 @@
-# model_training.py
-import re
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-import pickle
+import re
 import os
+import nltk
+import joblib
 
-# Load the dataset with fallback for bad rows
-try:
-    data = pd.read_csv('data/sample_fake_news.csv', on_bad_lines='skip', engine='python')
-except Exception as e:
-    print(" Error reading CSV file:", e)
-    exit()
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report
 
-# Check necessary columns
-required_cols = ['title', 'description', 'label']
-for col in required_cols:
-    if col not in data.columns:
-        print(f" Missing column: {col}")
-        exit()
+# Download necessary NLTK data
+nltk.download('stopwords')
+nltk.download('wordnet')
 
-# Combine title and description for better features
-data['combined_text'] = data['title'].astype(str) + ' ' + data['description'].astype(str)
+# Load real and fake news datasets
+real_df = pd.read_csv("data/realnews.csv", encoding='ISO-8859-1')
+fake_df = pd.read_csv("data/fakenews.csv", encoding='ISO-8859-1')
 
-# Preprocess text
+# Standardize column names
+real_df.columns = [col.lower().strip() for col in real_df.columns]
+fake_df.columns = [col.lower().strip() for col in fake_df.columns]
+
+# Add label
+real_df['label'] = 'real'
+fake_df['label'] = 'fake'
+
+# Combine datasets
+df = pd.concat([real_df, fake_df], ignore_index=True)
+df.dropna(inplace=True)
+df = df.sample(frac=1, random_state=42).reset_index(drop=True)
+
+# Setup for preprocessing
+stop_words = set(stopwords.words("english"))
+lemmatizer = WordNetLemmatizer()
+
+# 🔧 FIXED Preprocessing Function (No nltk.word_tokenize)
 def preprocess_text(text):
-    text = text.lower()
-    text = re.sub(r'[^\w\s]', '', text)
-    text = re.sub(r'\d+', '', text)
-    return text
+    text = str(text).lower()
+    text = re.sub(r"http\S+|www\S+|https\S+", "", text)
+    text = re.sub(r"[^a-zA-Z]", " ", text)
+    tokens = text.split()
+    tokens = [lemmatizer.lemmatize(w) for w in tokens if w not in stop_words and len(w) > 2]
+    return " ".join(tokens)
 
-data['processed_text'] = data['combined_text'].apply(preprocess_text)
+# Combine title and description for input
+df['text'] = df['title'].astype(str) + " " + df['description'].astype(str)
+df['cleaned_text'] = df['text'].apply(preprocess_text)
 
-# Split data
-X_train, X_test, y_train, y_test = train_test_split(
-    data['processed_text'], 
-    data['label'], 
-    test_size=0.2, 
-    random_state=42
-)
+# Vectorization
+vectorizer = TfidfVectorizer(max_features=5000, ngram_range=(1, 2))
+X = vectorizer.fit_transform(df['cleaned_text'])
+y = df['label']
 
-# Vectorize text
-vectorizer = TfidfVectorizer(max_features=5000, stop_words='english')
-X_train_vec = vectorizer.fit_transform(X_train)
-X_test_vec = vectorizer.transform(X_test)
+# Split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Train model
-model = RandomForestClassifier(n_estimators=100, random_state=42)
-model.fit(X_train_vec, y_train)
+model = LogisticRegression(max_iter=1000)
+model.fit(X_train, y_train)
 
 # Evaluate
-print(" Train accuracy:", model.score(X_train_vec, y_train))
-print(" Test accuracy:", model.score(X_test_vec, y_test))
+y_pred = model.predict(X_test)
+print("✅ Accuracy:", accuracy_score(y_test, y_pred))
+print("✅ Classification Report:\n", classification_report(y_test, y_pred))
 
 # Save model and vectorizer
-os.makedirs('models', exist_ok=True)
-with open('models/model.pkl', 'wb') as f:
-    pickle.dump(model, f)
-
-with open('models/vectorizer.pkl', 'wb') as f:
-    pickle.dump(vectorizer, f)
-
-print(" Model and vectorizer saved successfully in 'models/' folder.")
+os.makedirs("model", exist_ok=True)
+joblib.dump(model, "model/fake_news_model.pkl")
+joblib.dump(vectorizer, "model/vectorizer.pkl")
